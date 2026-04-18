@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { io } from "socket.io-client";
 
 export default function BulletproofSensor() {
   const [status, setStatus] = useState("V5 LOADING...");
@@ -8,12 +9,43 @@ export default function BulletproofSensor() {
   const [y, setY] = useState(0);
   const [z, setZ] = useState(0);
   const [wsStatus, setWsStatus] = useState("Searching for laptop...");
+  const socketRef = useRef<any>(null);
 
   useEffect(() => {
     setStatus("READY. TAP START.");
+    
+    // Connect to WebSocket
+    const socket = io();
+    socketRef.current = socket;
+    
+    socket.on("connect", () => {
+      setWsStatus("CONNECTED TO LAPTOP ✅");
+    });
+    
+    socket.on("disconnect", () => {
+      setWsStatus("DISCONNECTED ❌");
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
-  function start() {
+  async function start() {
+    // Request permission for iOS 13+ devices
+    if (typeof (DeviceMotionEvent as any) !== 'undefined' && typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+      try {
+        const permission = await (DeviceMotionEvent as any).requestPermission();
+        if (permission !== 'granted') {
+          setStatus("ERROR: PERMISSION DENIED");
+          return;
+        }
+      } catch (err) {
+        setStatus("ERROR: " + String(err));
+        return;
+      }
+    }
+
     setStatus("SENSORS ACTIVE ✅");
     if (typeof window !== 'undefined' && window.DeviceMotionEvent) {
       window.addEventListener("devicemotion", (e) => {
@@ -25,6 +57,10 @@ export default function BulletproofSensor() {
           setX(curX);
           setY(curY);
           setZ(curZ);
+          
+          if (socketRef.current && socketRef.current.connected) {
+            socketRef.current.emit("vibration_data", { x: curX, y: curY, z: curZ });
+          }
         }
       }, true);
     } else {
@@ -37,7 +73,8 @@ export default function BulletproofSensor() {
       <h1 style={{ color: '#0070f3' }}>BHS SENSOR v5</h1>
       
       <div style={{ padding: '20px', border: '1px solid #0f0', color: '#0f0', marginBottom: '20px' }}>
-        <strong>STATUS:</strong> {status}
+        <strong>SENSOR:</strong> {status} <br/>
+        <strong>NETWORK:</strong> {wsStatus}
       </div>
 
       <button onClick={start} style={{ 
@@ -60,7 +97,7 @@ export default function BulletproofSensor() {
       </div>
       
       <p style={{ marginTop: '20px', fontSize: '10px', color: '#444' }}>
-        Verify Chrome Flag for http://{typeof window !== 'undefined' ? window.location.hostname : 'IP'}:3000
+        Data streaming live to laptop dashboard via WebSockets.
       </p>
     </div>
   );
