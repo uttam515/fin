@@ -1,163 +1,74 @@
-# 🎓 AI Academic Mentor — Learning Through Projects
+# Structural Health Index from Passive Vibration Sensing
 
-An AI-powered platform that analyzes a student's academic syllabus and generates a personalized skill-building roadmap while ensuring their CGPA stays above a target threshold.
+A real-time structural monitoring system that uses a **mobile phone accelerometer as a vibration sensor** to estimate the **structural health of buildings or bridges** by analyzing vibration frequencies.
 
-The system helps students move from **theory-based learning to project-based learning**, enabling them to build real-world skills alongside their academic studies.
-
----
-
-# 🚀 Problem
-
-Many college students struggle with balancing **academic performance and skill development**.
-
-Students often ask questions like:
-
-- What subjects should I focus on to maintain my CGPA?
-- Which skills should I develop for my dream career?
-- How can I build projects while managing college workload?
-- What should I learn next?
-
-Traditional education systems provide **syllabus guidance but not skill-building direction**, leaving students confused about how to prepare for real-world careers.
+The system streams vibration data from a **mobile device to a backend server using WebSockets**, performs **signal processing (FFT)**, and computes a **Structural Health Index (SHI)** indicating potential structural degradation.
 
 ---
 
-# 💡 Solution
+# Problem
 
-We built an **AI-powered Academic Mentor** that helps students plan their learning journey.
+Infrastructure such as **bridges, buildings, and towers degrade silently over time** due to:
 
-The system analyzes:
+- Material fatigue  
+- Micro-cracks  
+- Loosened joints  
+- Environmental stress  
 
-- Academic syllabus
-- Current CGPA
-- Target CGPA
-- Career goals
-- Preferred technologies
+Traditional structural monitoring systems require:
 
-Based on this data, the platform generates:
+- Expensive calibrated sensors  
+- Manual inspection by engineers  
+- Complex installations  
 
-- Personalized skill roadmap
-- Project-based learning suggestions
-- Balanced weekly study plan
-
-This ensures students can **maintain academic performance while building real-world skills and projects.**
+This project demonstrates a **low-cost passive monitoring approach** using only a **smartphone accelerometer**.
 
 ---
 
-# ✨ Key Features
+# Solution
 
-## 📚 Syllabus Analysis
-Students upload or enter their academic syllabus.
+This project converts a **mobile phone into a vibration sensing device** and streams sensor data to a backend server where signal processing is performed.
 
-The AI analyzes:
-- Important subjects
-- Difficult topics
-- Subjects requiring higher focus
+The system:
 
----
+1. Captures vibration using the **mobile accelerometer**
+2. Streams data to a **Python backend via WebSockets**
+3. Performs **Fast Fourier Transform (FFT)** to detect dominant frequencies
+4. Compares frequency shifts with a baseline
+5. Computes a **Structural Health Index**
 
-## 🎯 Goal-Based Planning
-Students enter their **career goals** such as:
-
-- AI Engineer
-- Software Developer
-- Web Developer
-- Data Scientist
-
-The system recommends **skills aligned with their target career path.**
+This enables **continuous, low-cost monitoring of infrastructure health**.
 
 ---
 
-## 🛠 Learning Through Projects
-Instead of only suggesting topics, the platform encourages **learning by building projects.**
+# Features
 
-Example:
-
-| Topic | Suggested Project |
-|------|-------------------|
-| Data Structures | Pathfinding Visualizer |
-| Web Development | Personal Portfolio Website |
-| Machine Learning | Movie Recommendation System |
-
-Students can build these projects and add them to their **GitHub portfolio or resume**.
+- Real-time vibration monitoring  
+- Mobile accelerometer as a sensor  
+- Low-latency WebSocket data streaming  
+- FFT-based vibration analysis  
+- Structural Health Index computation  
+- Live frequency visualization dashboard  
 
 ---
 
-## 📅 Smart Weekly Planner
-
-The AI generates a **balanced weekly schedule** that includes:
-
-- Academic study
-- Skill learning
-- Project building
-
-This prevents students from **neglecting their CGPA while learning new skills.**
-
----
-
-# 🧠 How It Works
-
-1️⃣ Student enters:
-
-- Academic syllabus  
-- Current CGPA  
-- Target CGPA  
-- Career goals  
-- Technologies they want to learn  
-
-2️⃣ AI analyzes syllabus difficulty and workload.
-
-3️⃣ Based on the user's goals, the system recommends:
-
-- Skills to develop
-- Projects to build
-
-4️⃣ A **weekly learning roadmap** is generated.
-
----
-
-# 🛠 Tech Stack
+# Tech Stack
 
 ## Frontend
 - HTML
-- CSS
 - JavaScript
+- WebSocket API
+- DeviceMotion API
 
 ## Backend
 - Python
 - FastAPI
+- WebSockets
+- NumPy
+- SciPy
 
-## AI Layer
-- Groq API (LLM)
+## Networking
+- LocalTunnel (HTTPS access for mobile testing)
 
-## Tools
-- GitHub (Version Control)
-- LocalTunnel (Mobile demo access)
-
----
-
-# 📊 Example Output
-
-**Student Input**
-
-Current CGPA: 7.2  
-Target CGPA: 8.0  
-Goal: AI Engineer  
-
-**Generated Plan**
-
-Monday – Study Data Structures  
-Tuesday – Practice Python  
-Wednesday – Study Operating Systems  
-Thursday – Learn Machine Learning basics  
-Friday – Build ML mini project  
-Saturday – Continue project development  
-Sunday – Review concepts + GitHub commits
-
----
-
-# 📱 Demo
-
-To access the project from another device:
-
-```bash
-npx localtunnel --port 8000
+## Visualization
+- Chart.js / Plotly
