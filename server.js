@@ -45,10 +45,21 @@ app.prepare().then(() => {
   io.on("connection", (socket) => {
     console.log("New connection:", socket.id);
 
+    let dataCount = 0;
     // When a sensor sends vibration data
     socket.on("vibration_data", (data) => {
-      // Broadcast to all other clients (the dashboard)
-      socket.broadcast.emit("vibration_update", data);
+      const enrichedData = { ...data, sensorId: socket.id };
+      socket.broadcast.emit("vibration_update", enrichedData);
+    });
+
+    // When dashboard updates configuration
+    socket.on("update_config", (config) => {
+      socket.broadcast.emit("config_changed", config);
+    });
+
+    // When dashboard kicks a specific node
+    socket.on("kick_node", (targetId) => {
+      socket.to(targetId).emit("kicked");
     });
 
     socket.on("disconnect", () => {

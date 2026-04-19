@@ -9,13 +9,16 @@ export default function BulletproofSensor() {
   const [y, setY] = useState(0);
   const [z, setZ] = useState(0);
   const [wsStatus, setWsStatus] = useState("Searching for laptop...");
+  const [eventCount, setEventCount] = useState(0);
   const socketRef = useRef<any>(null);
 
   useEffect(() => {
     setStatus("READY. TAP START.");
     
     // Connect to WebSocket
-    const socket = io();
+    const socket = io({
+      transports: ["websocket"] // This bypasses Serveo's HTTP warning page!
+    });
     socketRef.current = socket;
     
     socket.on("connect", () => {
@@ -32,6 +35,8 @@ export default function BulletproofSensor() {
   }, []);
 
   async function start() {
+    setStatus("REQUESTING PERMISSION...");
+    
     // Request permission for iOS 13+ devices
     if (typeof (DeviceMotionEvent as any) !== 'undefined' && typeof (DeviceMotionEvent as any).requestPermission === 'function') {
       try {
@@ -47,9 +52,18 @@ export default function BulletproofSensor() {
     }
 
     setStatus("SENSORS ACTIVE ✅");
+    
+    let localCount = 0;
+    
     if (typeof window !== 'undefined' && window.DeviceMotionEvent) {
       window.addEventListener("devicemotion", (e) => {
-        const acc = e.accelerationIncludingGravity;
+        localCount++;
+        // Only update React state every 20 frames so we don't freeze the phone
+        if (localCount % 20 === 0) {
+           setEventCount(localCount);
+        }
+        
+        const acc = e.accelerationIncludingGravity || e.acceleration;
         if (acc) {
           const curX = acc.x || 0;
           const curY = acc.y || 0;
@@ -64,7 +78,7 @@ export default function BulletproofSensor() {
         }
       }, true);
     } else {
-      setStatus("ERROR: NO SENSOR API");
+      setStatus("ERROR: NO SENSOR API (Device Unsupported)");
     }
   }
 
@@ -74,7 +88,8 @@ export default function BulletproofSensor() {
       
       <div style={{ padding: '20px', border: '1px solid #0f0', color: '#0f0', marginBottom: '20px' }}>
         <strong>SENSOR:</strong> {status} <br/>
-        <strong>NETWORK:</strong> {wsStatus}
+        <strong>NETWORK:</strong> {wsStatus} <br/>
+        <strong>EVENTS FIRED:</strong> {eventCount}
       </div>
 
       <button onClick={start} style={{ 

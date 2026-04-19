@@ -1,261 +1,184 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BHS | INDUSTRIAL SENSOR</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SHM Sensor Node</title>
+    <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
     <style>
-        :root {
-            --primary: #0070f3;
-            --secondary: #a855f7;
-            --accent: #22c55e;
-            --bg: #050505;
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.08);
-        }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            background: var(--bg); 
-            color: #fff; 
-            font-family: 'Outfit', sans-serif; 
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 30px 20px;
-            overflow: hidden;
+            background: #000; color: #fff; font-family: -apple-system, system-ui, sans-serif;
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+            padding: 40px 20px; 
         }
-
-        /* Abstract Background Elements */
-        .blur-vortex {
-            position: fixed;
-            top: -100px;
-            right: -100px;
-            width: 300px;
-            height: 300px;
-            background: var(--primary);
-            filter: blur(120px);
-            opacity: 0.15;
-            z-index: -1;
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .header p { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 3px; margin-top: 6px; }
+        .status-bar { 
+            width: 100%; max-width: 400px; padding: 16px 20px; 
+            border: 1px solid #222; border-radius: 16px; margin-bottom: 30px; 
+            font-size: 13px; display: flex; flex-direction: column; gap: 8px; background: #0a0a0a;
         }
-
-        .header { margin-bottom: 30px; position: relative; }
-        .brand { font-weight: 900; font-size: 14px; letter-spacing: 6px; color: var(--primary); margin-bottom: 8px; }
-        .title { font-size: 32px; font-weight: 900; line-height: 1; letter-spacing: -1px; }
-
-        .dashboard-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+        .status-row { display: flex; justify-content: space-between; align-items: center; }
+        .status-row .label { color: #555; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 2px; }
+        .status-row .value { font-weight: 700; font-variant-numeric: tabular-nums; }
+        .connected { color: #22c55e; }
+        .disconnected { color: #ef4444; }
+        .kicked { color: #ef4444; }
+        .btn { 
+            width: 100%; max-width: 400px; height: 80px; font-size: 16px; font-weight: 800;
+            background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; border: none;
+            border-radius: 20px; cursor: pointer; text-transform: uppercase; letter-spacing: 3px;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 0 40px -10px rgba(37,99,235,0.5);
         }
-
-        /* Oscilloscope View */
-        .oscilloscope {
-            background: var(--glass);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 20px;
-            position: relative;
-            height: 160px;
-            overflow: hidden;
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.3; }
+        .readings { 
+            width: 100%; max-width: 400px; margin-top: 30px;
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
         }
-        canvas { width: 100%; height: 100%; }
-        .osc-label { font-size: 10px; font-weight: 900; color: #444; position: absolute; top: 15px; left: 20px; text-transform: uppercase; }
-
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .stat-card {
-            background: var(--glass);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 20px;
-            position: relative;
+        .axis-card {
+            background: #0a0a0a; border: 1px solid #222; border-radius: 16px;
+            padding: 20px 12px; text-align: center;
         }
-        .stat-label { font-size: 10px; color: #666; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
-        .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: #fff; }
-
-        .broadcast-hub {
-            background: var(--glass);
-            border: 1px solid var(--border);
-            border-radius: 30px;
-            padding: 30px;
-            text-align: center;
-            position: relative;
-            margin-top: auto;
-            margin-bottom: 20px;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: #444;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-            transition: 0.3s;
-        }
-        .status-dot.active { background: var(--accent); box-shadow: 0 0 15px var(--accent); }
-
-        .main-btn {
-            width: 100%;
-            padding: 20px;
-            background: #fff;
-            color: #000;
-            border: none;
-            border-radius: 20px;
-            font-size: 18px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            margin-top: 20px;
-        }
-        .main-btn:active { transform: scale(0.95); opacity: 0.9; }
-        .main-btn.active { background: var(--primary); color: #fff; }
-
-        /* HUD Components */
-        .hud-scan {
-            position: absolute;
-            top: -10px;
-            right: 20px;
-            font-family: 'JetBrains Mono';
-            font-size: 8px;
-            color: #333;
-            text-align: right;
-        }
-
-        .axis-indicators {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .axis-val { font-size: 14px; font-family: 'JetBrains Mono'; font-weight: 700; }
-        .axis-x { color: var(--primary); }
-        .axis-y { color: var(--secondary); }
-        .axis-z { color: var(--accent); }
+        .axis-card .axis-label { font-size: 10px; color: #555; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }
+        .axis-card .axis-value { font-size: 28px; font-weight: 900; margin-top: 8px; font-variant-numeric: tabular-nums; }
+        .x-color { color: #3b82f6; }
+        .y-color { color: #a855f7; }
+        .z-color { color: #22c55e; }
     </style>
 </head>
 <body>
-    <div class="blur-vortex"></div>
+    <div class="header">
+        <h1>🏗️ SHM Sensor Node</h1>
+        <p>Passive Vibration Sensing</p>
+    </div>
     
-    <header class="header">
-        <div class="brand">SYSTEM.CORE / BHS</div>
-        <h1 class="title">INFRASTRUCTURE<br>TELEMETRY</h1>
-        <div class="hud-scan" id="hud-time">--:--:--</div>
-    </header>
-
-    <div class="dashboard-container">
-        <div class="oscilloscope">
-            <div class="osc-label">Live Waveform Feedback</div>
-            <canvas id="waveCanvas"></canvas>
+    <div class="status-bar">
+        <div class="status-row">
+            <span class="label">Sensor</span>
+            <span class="value" id="status">Ready</span>
         </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Network Link</div>
-                <div class="stat-val" id="net-status">OFFLINE</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Integrity State</div>
-                <div class="stat-val" id="sense-status">STBY</div>
-            </div>
+        <div class="status-row">
+            <span class="label">Network</span>
+            <span class="value" id="wsStatus">Connecting...</span>
         </div>
+        <div class="status-row">
+            <span class="label">Packets Sent</span>
+            <span class="value" id="eventCount">0</span>
+        </div>
+    </div>
 
-        <div class="broadcast-hub">
-            <div style="font-size: 12px; font-weight: 700; color: #555;">
-                <span class="status-dot" id="dot"></span>
-                <span id="label">SYSTEM IDLE</span>
-            </div>
-            
-            <div class="axis-indicators">
-                <div class="axis-x">X: <span id="x">0.0</span></div>
-                <div class="axis-y">Y: <span id="y">0.0</span></div>
-                <div class="axis-z">Z: <span id="z">0.0</span></div>
-            </div>
+    <button class="btn" id="startBtn" onclick="startSensing()">Start Sensing</button>
 
-            <button class="main-btn" id="btn" onclick="toggle()">Initialize Broadcast</button>
+    <div class="readings">
+        <div class="axis-card">
+            <div class="axis-label">X-Axis</div>
+            <div class="axis-value x-color" id="xVal">—</div>
+        </div>
+        <div class="axis-card">
+            <div class="axis-label">Y-Axis</div>
+            <div class="axis-value y-color" id="yVal">—</div>
+        </div>
+        <div class="axis-card">
+            <div class="axis-label">Z-Axis</div>
+            <div class="axis-value z-color" id="zVal">—</div>
         </div>
     </div>
 
     <script>
-        let socket;
-        let active = false;
-        const canvas = document.getElementById('waveCanvas');
-        const ctx = canvas.getContext('2d');
-        let points = [];
+        const socket = io();
+        let emitCount = 0;
 
-        function resize() {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
-        }
-        window.onresize = resize;
-        resize();
+        socket.on("connect", () => {
+            document.getElementById("wsStatus").innerText = "Connected ✅";
+            document.getElementById("wsStatus").className = "value connected";
+        });
+        
+        socket.on("disconnect", () => {
+            document.getElementById("wsStatus").innerText = "Disconnected ❌";
+            document.getElementById("wsStatus").className = "value disconnected";
+        });
 
-        try {
-            socket = io();
-            socket.on('connect', () => {
-                document.getElementById('net-status').innerText = 'SECURE';
-                document.getElementById('net-status').style.color = '#0070f3';
-            });
-        } catch(e) {}
+        // ── EMA with ALPHA = 0.4 ──
+        // 0.4 = HIGH SENSITIVITY. 40% of each raw reading passes through instantly.
+        // Stabilization is handled on the DASHBOARD side (FFT windowing + bin smoothing).
+        let smoothedX = 0, smoothedY = 0, smoothedZ = 0;
+        const ALPHA = 0.4;
 
-        function draw() {
-            ctx.clearRect(0,0,canvas.width, canvas.height);
-            ctx.beginPath();
-            ctx.strokeStyle = '#0070f3';
-            ctx.lineWidth = 2;
-            const step = canvas.width / 50;
-            for(let i=0; i<points.length; i++) {
-                const x = i * step;
-                const y = (canvas.height/2) + (points[i] * 5);
-                if(i===0) ctx.moveTo(x,y);
-                else ctx.lineTo(x,y);
+        socket.on("kicked", () => {
+            if (window.DeviceMotionEvent) {
+                window.removeEventListener("devicemotion", handleMotion, true);
             }
-            ctx.stroke();
-            requestAnimationFrame(draw);
+            socket.disconnect();
+            document.getElementById("status").innerText = "Ejected by Admin";
+            document.getElementById("status").className = "value kicked";
+            document.getElementById("wsStatus").innerText = "Severed";
+            document.getElementById("wsStatus").className = "value kicked";
+            document.getElementById("startBtn").disabled = true;
+        });
+
+        function handleMotion(e) {
+            // PREFER acceleration (gravity-removed) for pure vibration sensing
+            // Resting phone: x=0, y=0, z=0
+            // Gentle tap: z=±0.5   |   Hard shake: z=±10
+            const acc = e.acceleration || e.accelerationIncludingGravity;
+            if (!acc) return;
+
+            const rawX = acc.x || 0;
+            const rawY = acc.y || 0;
+            const rawZ = acc.z || 0;
+
+            // EMA only for the phone's own display (so numbers don't flicker on screen)
+            smoothedX = (0.3 * rawX) + (0.7 * smoothedX);
+            smoothedY = (0.3 * rawY) + (0.7 * smoothedY);
+            smoothedZ = (0.3 * rawZ) + (0.7 * smoothedZ);
+
+            // Emit RAW unfiltered data to the dashboard at ~30 Hz
+            // The FFT needs the raw vibration signal to detect frequency peaks!
+            emitCount++;
+            if (emitCount % 2 === 0) {
+                document.getElementById("xVal").innerText = smoothedX.toFixed(2);
+                document.getElementById("yVal").innerText = smoothedY.toFixed(2);
+                document.getElementById("zVal").innerText = smoothedZ.toFixed(2);
+                document.getElementById("eventCount").innerText = Math.floor(emitCount / 2);
+                
+                if (socket.connected) {
+                    socket.emit("vibration_data", { x: rawX, y: rawY, z: rawZ });
+                }
+            }
         }
-        draw();
 
-        setInterval(() => {
-            const d = new Date();
-            document.getElementById('hud-time').innerText = d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds() + " UTC";
-        }, 1000);
+        async function startSensing() {
+            document.getElementById("status").innerText = "Requesting Permission...";
+            
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const permission = await DeviceMotionEvent.requestPermission();
+                    if (permission !== 'granted') {
+                        document.getElementById("status").innerText = "Permission Denied";
+                        document.getElementById("status").className = "value disconnected";
+                        return;
+                    }
+                } catch (err) {
+                    document.getElementById("status").innerText = "Error: " + err;
+                    document.getElementById("status").className = "value disconnected";
+                    return;
+                }
+            }
 
-        function toggle() {
-            if(active) { location.reload(); return; }
+            document.getElementById("status").innerText = "Sensors Active ✅";
+            document.getElementById("status").className = "value connected";
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("startBtn").style.opacity = "0.3";
             
             if (window.DeviceMotionEvent) {
-                active = true;
-                const btn = document.getElementById('btn');
-                btn.innerText = "Terminate Link";
-                btn.classList.add('active');
-                document.getElementById('dot').classList.add('active');
-                document.getElementById('label').innerText = "BROADCASTING DATA";
-                document.getElementById('sense-status').innerText = "LIVE";
-                document.getElementById('sense-status').style.color = "#22c55e";
-
-                window.addEventListener("devicemotion", (e) => {
-                    const acc = e.accelerationIncludingGravity;
-                    if (acc) {
-                        const x = acc.x || 0;
-                        const y = acc.y || 0;
-                        const z = acc.z || 0;
-                        
-                        document.getElementById('x').innerText = x.toFixed(1);
-                        document.getElementById('y').innerText = y.toFixed(1);
-                        document.getElementById('z').innerText = z.toFixed(1);
-                        
-                        points.push(z - 9.8);
-                        if(points.length > 50) points.shift();
-
-                        if (socket && socket.connected) {
-                            socket.emit('vibration_data', { x, y, z, timestamp: Date.now() });
-                        }
-                    }
-                }, true);
+                window.addEventListener("devicemotion", handleMotion, true);
+            } else {
+                document.getElementById("status").innerText = "No Sensor API";
+                document.getElementById("status").className = "value disconnected";
             }
         }
     </script>
